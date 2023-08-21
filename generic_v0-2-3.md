@@ -869,7 +869,7 @@ Optional[str (AfterValidator(validate_orcid_id))]
 </details>
 
 ## `rdf_source`<sub> Union</sub> ≝ `None`
-Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.
+Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.
 Do not set this field in a YAML file.
 
 

@@ -2298,7 +2298,7 @@ SHA256 checksum of the model RDF specified under `rdf_source`.
 </details>
 
 ## `rdf_source`<sub> Union</sub> ≝ `None`
-Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.
+Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.
 Do not set this field in a YAML file.
 
 
@@ -3214,7 +3214,7 @@ Optional[str (AfterValidator(validate_orcid_id))]
 </details>
 
 ### `training_data.rdf_source`<sub> Union</sub> ≝ `None`
-Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.
+Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.
 Do not set this field in a YAML file.
 
 

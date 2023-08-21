@@ -2970,7 +2970,7 @@
                         }
                     ],
                     "default": null,
-                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.\n    Do not set this field in a YAML file.",
+                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.\n    Do not set this field in a YAML file.",
                     "title": "Rdf Source"
                 },
                 "tags": {
@@ -4741,7 +4741,7 @@
                         }
                     ],
                     "default": null,
-                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.\n    Do not set this field in a YAML file.",
+                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.\n    Do not set this field in a YAML file.",
                     "title": "Rdf Source"
                 },
                 "tags": {
@@ -6529,7 +6529,7 @@
                         }
                     ],
                     "default": null,
-                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.\n    Do not set this field in a YAML file.",
+                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.\n    Do not set this field in a YAML file.",
                     "title": "Rdf Source"
                 },
                 "tags": {
@@ -8380,7 +8380,7 @@
                         }
                     ],
                     "default": null,
-                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.\n    Do not set this field in a YAML file.",
+                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.\n    Do not set this field in a YAML file.",
                     "title": "Rdf Source"
                 },
                 "tags": {
@@ -11963,7 +11963,7 @@
                         }
                     ],
                     "default": null,
-                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was downloaded from.\n    Do not set this field in a YAML file.",
+                    "description": "Resource description file (RDF) source; used to keep track of where an rdf.yaml was loaded from.\n    Do not set this field in a YAML file.",
                     "title": "Rdf Source"
                 },
                 "tags": {
