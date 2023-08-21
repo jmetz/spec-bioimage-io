@@ -2983,7 +2983,7 @@ Or you can generate a SHA256 checksum with Python's `hashlib`,
 
 
 
-##### `weights.pytorch_state_dict.architecture.kwargs`<sub> shared.nodes.Kwargs</sub> ≝ `{}`
+##### `weights.pytorch_state_dict.architecture.kwargs`<sub> Dict[]</sub> ≝ `{}`
 key word arguments for the `callable`
 
 
@@ -2997,7 +2997,7 @@ callable returning a torch.nn.Module instance.
 
 model.v0_4.CallableFromDepencency
 
-##### `weights.pytorch_state_dict.architecture.kwargs`<sub> shared.nodes.Kwargs</sub> ≝ `{}`
+##### `weights.pytorch_state_dict.architecture.kwargs`<sub> Dict[]</sub> ≝ `{}`
 key word arguments for the `callable`
 
 
@@ -3395,7 +3395,7 @@ Optional[str (Len(min_length=64, max_length=64))]
 
 </details>
 
-## `config`<sub> shared.nodes.ConfigNode</sub> ≝ ``
+## `config`<sub> _internal.base_nodes.ConfigNode</sub> ≝ ``
 A field for custom configuration that can contain any keys not present in the RDF spec.
 This means you should not store, for example, a GitHub repo URL in `config` since there is a `git_repo` field.
 Keys in `config` may be very specific to a tool or consumer software. To avoid conflicting definitions,
@@ -3615,7 +3615,7 @@ Run mode name
 
 
 
-### `run_mode.kwargs`<sub> shared.nodes.Kwargs</sub> ≝ `{}`
+### `run_mode.kwargs`<sub> Dict[]</sub> ≝ `{}`
 Run mode specific key word arguments
 
 
@@ -3825,7 +3825,7 @@ URL to cite (preferably specify a `doi` instead)
 
 </details>
 
-### `training_data.config`<sub> shared.nodes.ConfigNode</sub> ≝ ``
+### `training_data.config`<sub> _internal.base_nodes.ConfigNode</sub> ≝ ``
 A field for custom configuration that can contain any keys not present in the RDF spec.
 This means you should not store, for example, a GitHub repo URL in `config` since there is a `git_repo` field.
 Keys in `config` may be very specific to a tool or consumer software. To avoid conflicting definitions,

@@ -163,7 +163,7 @@ URL to cite (preferably specify a `doi` instead)
 
 </details>
 
-## `config`<sub> shared.nodes.ConfigNode</sub> ≝ ``
+## `config`<sub> _internal.base_nodes.ConfigNode</sub> ≝ ``
 A field for custom configuration that can contain any keys not present in the RDF spec.
 This means you should not store, for example, a github repo URL in `config` since we already have the
 `git_repo` field defined in the spec.

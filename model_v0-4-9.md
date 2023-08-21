@@ -1677,7 +1677,7 @@ Or you can generate a SHA256 checksum with Python's `hashlib`,
 
 Optional[str (Len(min_length=64, max_length=64))]
 
-#### `weights.pytorch_state_dict.kwargs`<sub> shared.nodes.Kwargs</sub> ≝ `{}`
+#### `weights.pytorch_state_dict.kwargs`<sub> Dict[]</sub> ≝ `{}`
 key word arguments for the `architecture` callable
 
 
@@ -2098,7 +2098,7 @@ URL to cite (preferably specify a `doi` instead)
 
 </details>
 
-## `config`<sub> shared.nodes.ConfigNode</sub> ≝ ``
+## `config`<sub> _internal.base_nodes.ConfigNode</sub> ≝ ``
 A field for custom configuration that can contain any keys not present in the RDF spec.
 This means you should not store, for example, a github repo URL in `config` since we already have the
 `git_repo` field defined in the spec.
@@ -2320,7 +2320,7 @@ Run mode name
 
 
 
-### `run_mode.kwargs`<sub> shared.nodes.Kwargs</sub> ≝ `{}`
+### `run_mode.kwargs`<sub> Dict[]</sub> ≝ `{}`
 Run mode specific key word arguments
 
 
@@ -2534,7 +2534,7 @@ URL to cite (preferably specify a `doi` instead)
 
 </details>
 
-### `training_data.config`<sub> shared.nodes.ConfigNode</sub> ≝ ``
+### `training_data.config`<sub> _internal.base_nodes.ConfigNode</sub> ≝ ``
 A field for custom configuration that can contain any keys not present in the RDF spec.
 This means you should not store, for example, a github repo URL in `config` since we already have the
 `git_repo` field defined in the spec.
