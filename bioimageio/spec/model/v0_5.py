@@ -1,5 +1,5 @@
-import warnings
-from typing import Any, ClassVar, Dict, FrozenSet, List, Literal, NewType, Optional, Set, Tuple, Union
+import collections.abc
+from typing import Any, ClassVar, Dict, FrozenSet, List, Literal, NewType, Optional, Sequence, Set, Tuple, Union
 
 from annotated_types import Ge, Gt, Interval, MaxLen, MinLen, Predicate
 from pydantic import (
@@ -21,8 +21,8 @@ from bioimageio.spec._internal.types import Datetime as Datetime
 from bioimageio.spec._internal.types import DeprecatedLicenseId as DeprecatedLicenseId
 from bioimageio.spec._internal.types import FileSource as FileSource
 from bioimageio.spec._internal.types import Identifier as Identifier
-from bioimageio.spec._internal.types import IdentifierStr, LowerCaseIdentifierStr
 from bioimageio.spec._internal.types import LicenseId as LicenseId
+from bioimageio.spec._internal.types import LowerCaseIdentifierStr
 from bioimageio.spec._internal.types import NotEmpty as NotEmpty
 from bioimageio.spec._internal.types import RdfContent as RdfContent
 from bioimageio.spec._internal.types import RelativeFilePath as RelativeFilePath
@@ -30,7 +30,7 @@ from bioimageio.spec._internal.types import Sha256 as Sha256
 from bioimageio.spec._internal.types import Unit as Unit
 from bioimageio.spec._internal.types import Version as Version
 from bioimageio.spec._internal.types.field_validation import AfterValidator
-from bioimageio.spec._internal.validation_context import InternalValidationContext
+from bioimageio.spec._internal.validation_context import InternalValidationContext, get_internal_validation_context
 from bioimageio.spec.dataset.v0_3 import Dataset as Dataset
 from bioimageio.spec.dataset.v0_3 import LinkedDataset as LinkedDataset
 from bioimageio.spec.generic.v0_3 import Attachment as Attachment
@@ -48,7 +48,6 @@ from bioimageio.spec.model.v0_4 import KnownRunMode as KnownRunMode
 from bioimageio.spec.model.v0_4 import LinkedModel as LinkedModel
 from bioimageio.spec.model.v0_4 import ProcessingKwargs as ProcessingKwargs
 from bioimageio.spec.model.v0_4 import RunMode as RunMode
-from bioimageio.spec.model.v0_4 import WeightsEntryBase as WeightsEntryBase
 from bioimageio.spec.model.v0_4 import WeightsFormat as WeightsFormat
 from bioimageio.spec.model.v0_5_converter import convert_from_older_format
 
@@ -186,6 +185,20 @@ class AxisBase(NodeWithExplicitlySetFields, frozen=True):
     id: AxisId
     """An axis id unique across all axes of one tensor."""
 
+    @model_validator(mode="before")
+    @classmethod
+    def convert_name_to_id(cls, data: Dict[str, Any], info: ValidationInfo):
+        context = get_internal_validation_context(info.context)
+        if (
+            "name" in data
+            and "id" not in data
+            and "original_format" in context
+            and context["original_format"].release[:2] <= (0, 4)
+        ):
+            data["id"] = data.pop("name")
+
+        return data
+
     description: Annotated[str, MaxLen(128)] = ""
 
     __hash__ = NodeWithExplicitlySetFields.__hash__
@@ -206,36 +219,34 @@ class BatchAxis(AxisBase, frozen=True):
     otherwise (the default) it may be chosen arbitrarily depending on available memory"""
 
 
-CHANNEL_NAMES_PLACEHOLDER = ("channel1", "channel2", "etc")
-ChannelName = Annotated[IdentifierStr, StringConstraints(min_length=3, max_length=16, pattern=r"^.*\{i\}.*$")]
+GenericChannelName = Annotated[str, StringConstraints(min_length=3, max_length=16, pattern=r"^.*\{i\}.*$")]
 
 
 class ChannelAxis(AxisBase, frozen=True):
     type: Literal["channel"] = "channel"
     id: AxisId = AxisId("channel")
-    channel_names: Union[Tuple[ChannelName, ...], ChannelName] = "channel{i}"
-    size: Union[Annotated[int, Gt(0)], SizeReference, Literal["#channel_names"]] = "#channel_names"
+    channel_names: Union[Tuple[Identifier, ...], Identifier, GenericChannelName] = "channel{i}"
+    size: Union[Annotated[int, Gt(0)], SizeReference] = "#channel_names"  # type: ignore
 
-    def model_post_init(self, __context: Any):
-        self.model_config["frozen"] = False
-        if self.size == "#channel_names":
-            self.size = len(self.channel_names)  # type: ignore
-            self.__pydantic_fields_set__.remove("size")
-
-        if self.channel_names == CHANNEL_NAMES_PLACEHOLDER:
-            assert isinstance(self.size, int)
-            self.channel_names = tuple(f"channel{i}" for i in range(1, self.size + 1))  # type: ignore
-            self.__pydantic_fields_set__.remove("channel_names")
-
-        self.model_config["frozen"] = True
-        return super().model_post_init(__context)
-
-    @model_validator(mode="after")
-    def validate_size_is_known(self):
-        if self.size == "#channel_names":
+    @model_validator(mode="before")
+    @classmethod
+    def set_size_or_channel_names(cls, data: Dict[str, Any]):
+        channel_names: Union[Any, Sequence[Any]] = data.get("channel_names", "channel{i}")
+        size = data.get("size", "#channel_names")
+        if size == "#channel_names" and channel_names == "channel{i}":
             raise ValueError("Channel dimension has unknown size. Please specify `size` or `channel_names`.")
 
-        return self
+        if (
+            size == "#channel_names"
+            and not isinstance(channel_names, str)
+            and isinstance(channel_names, collections.abc.Sequence)
+        ):
+            data["size"] = len(channel_names)
+
+        if isinstance(channel_names, str) and "{i}" in channel_names and isinstance(size, int):
+            data["channel_names"] = tuple(channel_names.format(i=i) for i in range(1, size + 1))
+
+        return data
 
 
 class IndexTimeSpaceAxisBase(AxisBase, frozen=True):
@@ -658,14 +669,14 @@ class TensorBase(Node, frozen=True):
         return axes
 
     test_tensor: FileSource
-    """An example tensor to use for testing.
+    """∈📦 An example tensor to use for testing.
     Using the model with the test input tensors is expected to yield the test output tensors.
     Each test tensor has be a an ndarray in the
     [numpy.lib file format](https://numpy.org/doc/stable/reference/generated/numpy.lib.format.html#module-numpy.lib.format).
     The file extension must be '.npy'."""
 
     sample_tensor: Optional[FileSource] = None
-    """A sample tensor to illustrate a possible input/output for the model,
+    """∈📦 A sample tensor to illustrate a possible input/output for the model,
     The sample files primarily serve to inform a human user about an example use case
     and are typically stored as HDF5, PNG or TIFF images."""
 
@@ -800,6 +811,43 @@ class ArchitectureFromDependency(Node, frozen=True):
 Architecture = Union[ArchitectureFromFile, ArchitectureFromDependency]
 
 
+class WeightsEntryBase(Node, frozen=True):
+    type: ClassVar[WeightsFormat]
+    weights_format_name: ClassVar[str]  # human readable
+
+    source: FileSource
+    """∈📦 The weights file."""
+
+    sha256: Annotated[
+        Optional[Sha256],
+        warn(Sha256, "Missing SHA-256 hash value."),
+        Field(description="SHA256 checksum of the source file\n" + SHA256_HINT),
+    ] = None
+    """SHA256 checksum of the source file"""
+
+    authors: Union[Tuple[Author, ...], None] = None
+    """Authors
+    Either the person(s) that have trained this model resulting in the original weights file.
+        (If this is the initial weights entry, i.e. it does not have a `parent`)
+    Or the person(s) who have converted the weights to this weights format.
+        (If this is a child weight, i.e. it has a `parent` field)
+    """
+
+    parent: Annotated[Optional[WeightsFormat], Field(examples=["pytorch_state_dict"])] = None
+    """The source weights these weights were converted from.
+    For example, if a model's weights were converted from the `pytorch_state_dict` format to `torchscript`,
+    The `pytorch_state_dict` weights entry has no `parent` and is the parent of the `torchscript` weights.
+    All weight entries except one (the initial set of weights resulting from training the model),
+    need to have this field."""
+
+    @model_validator(mode="after")
+    def check_parent_is_not_self(self) -> Self:
+        if self.type == self.parent:
+            raise ValueError("Weights entry can't be it's own parent.")
+
+        return self
+
+
 class KerasHdf5Weights(WeightsEntryBase, frozen=True):
     type = "keras_hdf5"
     weights_format_name: ClassVar[str] = "Keras HDF5"
@@ -814,14 +862,31 @@ class OnnxWeights(WeightsEntryBase, frozen=True):
     """ONNX opset version"""
 
 
+class Dependencies(StringNode):
+    _pattern = r"^.+:.+$"
+    manager: Annotated[NotEmpty[str], Field(examples=["conda", "maven", "pip"])]
+    """Dependency manager"""
+
+    file: Annotated[FileSource, Field(examples=["environment.yaml", "pom.xml", "requirements.txt"])]
+    """∈📦 Dependency file"""
+
+    @classmethod
+    def _get_data(cls, valid_string_data: str):
+        manager, *file_parts = valid_string_data.split(":")
+        return dict(manager=manager, file=":".join(file_parts))
+
+
 class PytorchStateDictWeights(WeightsEntryBase, frozen=True):
     type = "pytorch_state_dict"
     weights_format_name: ClassVar[str] = "Pytorch State Dict"
     architecture: Architecture
-
     pytorch_version: Version
     """Version of the PyTorch library used.
     If `depencencies` is specified it has to include pytorch and any version pinning has to be compatible."""
+
+    dependencies: Optional[Dependencies] = None
+    """Custom dependencies beyond pytorch.
+    Should include pytorch and any version pinning has to be compatible with `pytorch_version`."""
 
 
 class TensorflowJsWeights(WeightsEntryBase, frozen=True):
@@ -840,6 +905,10 @@ class TensorflowSavedModelBundleWeights(WeightsEntryBase, frozen=True):
     weights_format_name: ClassVar[str] = "Tensorflow Saved Model"
     tensorflow_version: Version
     """Version of the TensorFlow library used."""
+
+    dependencies: Optional[Dependencies] = None
+    """Custom dependencies beyond tensorflow.
+    Should include tensorflow and any version pinning has to be compatible with `tensorflow_version`."""
 
     source: Union[HttpUrl, RelativeFilePath]
     """∈📦 The multi-file weights.
@@ -892,22 +961,6 @@ class Weights(Node, frozen=True):
                 raise ValueError(f"`weights.{wtype}.parent={entry.parent} not in specified weight formats: {entries}")
 
         return self
-
-
-class ModelRdf(Node, frozen=True):
-    rdf_source: FileSource
-    """URL or relative path to a model RDF"""
-
-    sha256: Sha256
-    """SHA256 checksum of the model RDF specified under `rdf_source`."""
-
-
-# def get_default_partial_inputs():
-#     return (
-#         InputTensor(axes=(BatchAxis(),), test_tensor=HttpUrl("https://example.com/test.npy")).model_dump(
-#             exclude_unset=False, exclude={"axes", "test_tensor"}
-#         ),
-#     )
 
 
 class Model(GenericBaseNoSource, frozen=True, title="bioimage.io model specification"):
@@ -1024,8 +1077,21 @@ class Model(GenericBaseNoSource, frozen=True, title="bioimage.io model specifica
                     f"Self-referencing not allowed for {field_name}[{i}].axes[{a}].size.reference: "
                     f"{axis.size.reference}"
                 )
-            if axis.type == "channel" and valid_independent_refs[axis.size.reference][1].type != "channel":
-                raise ValueError("A channel axis' size may only reference another fixed size channel axis.")
+            if axis.type == "channel":
+                if valid_independent_refs[axis.size.reference][1].type != "channel":
+                    raise ValueError("A channel axis' size may only reference another fixed size channel axis.")
+                if isinstance(axis.channel_names, str) and "{i}" in axis.channel_names:
+                    ref_size = valid_independent_refs[axis.size.reference][2]
+                    assert isinstance(
+                        ref_size, int
+                    ), "channel axis ref (another channel axis) has to specify fixed size"
+                    generated_channel_names = tuple(
+                        Identifier(axis.channel_names.format(i=i)) for i in range(1, ref_size + 1)
+                    )
+                    axis.model_config["frozen"] = False
+                    axis.channel_names = generated_channel_names  # type: ignore
+                    axis.model_config["frozen"] = True
+
             if (ax_unit := getattr(axis, "unit", None)) != (
                 ref_unit := getattr(valid_independent_refs[axis.size.reference][1], "unit", None)
             ):
@@ -1044,8 +1110,20 @@ class Model(GenericBaseNoSource, frozen=True, title="bioimage.io model specifica
                 raise ValueError(f"Invalid tensor axis reference at {field_name}[{i}].axes[{a}].size: {axis.size}.")
             if axis.size in (axis.id, f"{tensor_id}.{axis.id}"):
                 raise ValueError(f"Self-referencing not allowed for {field_name}[{i}].axes[{a}].size: {axis.size}.")
-            if axis.type == "channel" and valid_independent_refs[axis.size][1].type != "channel":
-                raise ValueError("A channel axis' size may only reference another fixed size channel axis.")
+            if axis.type == "channel":
+                if valid_independent_refs[axis.size][1].type != "channel":
+                    raise ValueError("A channel axis' size may only reference another fixed size channel axis.")
+                if isinstance(axis.channel_names, str) and "{i}" in axis.channel_names:
+                    ref_size = valid_independent_refs[axis.size][2]
+                    assert isinstance(
+                        ref_size, int
+                    ), "channel axis ref (another channel axis) has to specify fixed size"
+                    generated_channel_names = tuple(
+                        Identifier(axis.channel_names.format(i=i)) for i in range(1, ref_size + 1)
+                    )
+                    axis.model_config["frozen"] = False
+                    axis.channel_names = generated_channel_names  # type: ignore
+                    axis.model_config["frozen"] = True
 
     license: Annotated[
         Union[LicenseId, DeprecatedLicenseId],
@@ -1155,8 +1233,16 @@ class Model(GenericBaseNoSource, frozen=True, title="bioimage.io model specifica
     """The persons that have packaged and uploaded this model.
     Only required if those persons differ from the `authors`."""
 
-    parent: Optional[Union[LinkedModel, ModelRdf]] = None
+    parent: Optional[LinkedModel] = None
     """The model from which this model is derived, e.g. by fine-tuning the weights."""
+
+    # todo: add parent self check once we have `id`
+    # @model_validator(mode="after")
+    # def validate_parent_is_not_self(self) -> Self:
+    #     if self.parent is not None and self.parent == self.id:
+    #         raise ValueError("The model may not reference itself as parent model")
+
+    #     return self
 
     run_mode: Annotated[
         Optional[RunMode], warn(None, "Run mode '{value}' has limited support across consumer softwares.")

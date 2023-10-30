@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from typing import Any, ClassVar, Dict, FrozenSet, List, Literal, NewType, Optional, Sequence, Tuple, Union
 
 from annotated_types import Ge, Interval, MaxLen, MinLen, MultipleOf
@@ -160,11 +159,11 @@ class WeightsEntryBase(Node, frozen=True):
     """Attachments that are specific to this weights entry."""
 
     authors: Union[Tuple[Author, ...], None] = None
-    """Authors:
-    If this is the initial weights entry (in other words: it does not have a `parent` field):
-        the person(s) that have trained this model.
-    If this is a child weight (it has a `parent` field):
-        the person(s) who have converted the weights to this format.
+    """Authors
+    Either the person(s) that have trained this model resulting in the original weights file.
+        (If this is the initial weights entry, i.e. it does not have a `parent`)
+    Or the person(s) who have converted the weights to this weights format.
+        (If this is a child weight, i.e. it has a `parent` field)
     """
 
     dependencies: Annotated[
@@ -684,14 +683,6 @@ class RunMode(Node, frozen=True):
     """Run mode specific key word arguments"""
 
 
-class ModelRdf(Node, frozen=True):
-    rdf_source: Annotated[FileSource, Field(alias="uri")]
-    """URL or relative path of a model RDF"""
-
-    sha256: Sha256
-    """SHA256 checksum of the model RDF specified under `rdf_source`."""
-
-
 class LinkedModel(LinkedResource, frozen=True):
     """Reference to a bioimage.io model."""
 
@@ -876,8 +867,17 @@ class Model(GenericBaseNoSource, frozen=True, title="bioimage.io model specifica
     """The persons that have packaged and uploaded this model.
     Only required if those persons differ from the `authors`."""
 
-    parent: Optional[Union[LinkedModel, ModelRdf]] = None
+    parent: Optional[LinkedModel] = None
     """The model from which this model is derived, e.g. by fine-tuning the weights."""
+
+    @field_validator("parent", mode="before")
+    @classmethod
+    def ignore_url_parent(cls, parent: Any):
+        if isinstance(parent, dict):
+            return None
+
+        else:
+            return parent
 
     run_mode: Optional[RunMode] = None
     """Custom run mode for this model: for more complex prediction procedures like test time

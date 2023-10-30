@@ -1,13 +1,10 @@
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, Union
 
 import pytest
 from pydantic import HttpUrl
 
-from bioimageio.spec._internal.types import RelativeFilePath
-from bioimageio.spec._internal.validation_context import ValidationContext
-from bioimageio.spec.description import load_description, validate_format
+from bioimageio.spec.description import validate_format
 from bioimageio.spec.generic.v0_2 import Author, Maintainer
 from bioimageio.spec.model.v0_5 import (
     AxisId,
@@ -18,7 +15,6 @@ from bioimageio.spec.model.v0_5 import (
     InputTensor,
     IntervalOrRatioData,
     Model,
-    ModelRdf,
     OnnxWeights,
     OutputTensor,
     SpaceInputAxis,
@@ -28,28 +24,6 @@ from bioimageio.spec.model.v0_5 import (
     Weights,
 )
 from tests.utils import check_node, check_type
-
-
-def test_model_rdf_file_ref():
-    check_node(
-        ModelRdf,
-        dict(rdf_source=Path(__file__).name, sha256="s" * 64),
-        expected_dump_json=dict(rdf_source=Path(__file__).name, sha256="s" * 64),
-        expected_dump_python=dict(rdf_source=RelativeFilePath(Path(__file__).name), sha256="s" * 64),
-        context=ValidationContext(root=Path(__file__).parent),
-    )
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        dict(uri="https://example.com", sha256="s" * 64),
-        dict(id="lala", uri="https://example.com", sha256="s" * 64),
-        dict(url="https://example.com", sha256="s" * 64),
-    ],
-)
-def test_model_rdf_invalid(kwargs: Dict[str, Any]):
-    check_node(ModelRdf, kwargs, is_invalid=True)
 
 
 @pytest.mark.parametrize(
@@ -150,8 +124,8 @@ def test_tensor_base_invalid(kwargs: Dict[str, Any]):
             "description": "Input 1",
             "data": {"type": "float32"},
             "axes": [
-                dict(type="space", name="x", size=10),
-                dict(type="space", name="y", size=11),
+                dict(type="space", id="x", size=10),
+                dict(type="space", id="y", size=11),
                 dict(type="channel", channel_names=tuple("abc")),
             ],
             "preprocessing": [
@@ -181,7 +155,7 @@ def test_batch_axis(kwargs: Dict[str, Any]):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"type": "space", "name": "x", "size": 10},
+        {"type": "space", "id": "x", "size": 10},
         SpaceInputAxis(id=AxisId("x"), size=10),
         {"type": "batch"},
     ],
@@ -300,36 +274,23 @@ def test_output_fixed_shape_too_small(model_data: Dict[str, Any]):
 
 
 def test_output_ref_shape_mismatch(model_data: Dict[str, Any]):
-    model_data["outputs"][0]["axes"][0] = {"type": "space", "name": "x", "size": {"reference": "input_1.x"}, "halo": 2}
+    model_data["outputs"][0]["axes"][0] = {"type": "space", "id": "x", "size": {"reference": "input_1.x"}, "halo": 2}
     summary = validate_format(model_data)
     assert summary.status == "passed", summary.format()
     # input_1.x -> input_1.z
-    model_data["outputs"][0]["axes"][0] = {"type": "space", "name": "x", "size": {"reference": "input_1.z"}, "halo": 2}
+    model_data["outputs"][0]["axes"][0] = {"type": "space", "id": "x", "size": {"reference": "input_1.z"}, "halo": 2}
     summary = validate_format(model_data)
     assert summary.status == "failed", summary.format()
 
 
 def test_output_ref_shape_too_small(model_data: Dict[str, Any]):
-    model_data["outputs"][0]["axes"][0] = {"type": "space", "name": "x", "size": {"reference": "input_1.x"}, "halo": 2}
+    model_data["outputs"][0]["axes"][0] = {"type": "space", "id": "x", "size": {"reference": "input_1.x"}, "halo": 2}
     summary = validate_format(model_data)
     assert summary.status == "passed", summary.format()
 
     model_data["outputs"][0]["axes"][0]["halo"] = 999
     summary = validate_format(model_data)
     assert summary.status == "failed", summary.format()
-
-
-def test_model_parent(model_data: Dict[str, Any]):
-    rdf_source = "https://doi.org/10.5281/zenodo.5744489"
-    model_data["parent"] = dict(rdf_source=rdf_source, sha256="s" * 64)
-
-    model = load_description(model_data)
-    summary = model.validation_summaries[0]
-    assert summary.status == "passed", summary.format()
-
-    assert isinstance(model, Model)
-    assert isinstance(model.parent, ModelRdf)
-    assert str(model.parent.rdf_source) == rdf_source
 
 
 def test_model_has_parent_with_id(model_data: Dict[str, Any]):
@@ -340,9 +301,9 @@ def test_model_has_parent_with_id(model_data: Dict[str, Any]):
 
 def test_model_with_expanded_output(model_data: Dict[str, Any]):
     model_data["outputs"][0]["axes"] = [
-        {"type": "space", "name": "x", "size": {"reference": "input_1.x"}},
-        {"type": "space", "name": "y", "size": {"reference": "input_1.y"}},
-        {"type": "space", "name": "z", "size": 7},
+        {"type": "space", "id": "x", "size": {"reference": "input_1.x"}},
+        {"type": "space", "id": "y", "size": {"reference": "input_1.y"}},
+        {"type": "space", "id": "z", "size": 7},
         {"type": "channel", "size": {"reference": "input_1.channel"}},
     ]
 

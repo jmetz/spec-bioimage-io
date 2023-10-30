@@ -1,12 +1,11 @@
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, Union
 
 import pytest
 from pydantic import HttpUrl, ValidationError
 
 from bioimageio.spec._internal.validation_context import ValidationContext
-from bioimageio.spec.description import load_description, validate_format
+from bioimageio.spec.description import validate_format
 from bioimageio.spec.generic.v0_2 import Author, CiteEntry, Maintainer
 from bioimageio.spec.model.v0_4 import (
     AxesInCZYX,
@@ -14,7 +13,6 @@ from bioimageio.spec.model.v0_4 import (
     InputTensor,
     LinkedModel,
     Model,
-    ModelRdf,
     OnnxWeights,
     OutputTensor,
     Postprocessing,
@@ -28,36 +26,6 @@ from bioimageio.spec.model.v0_4 import (
     Weights,
 )
 from tests.utils import check_node, check_type, unset
-
-
-def test_model_rdf_file_ref():
-    check_node(
-        ModelRdf,
-        dict(rdf_source=Path(__file__).name, sha256="s" * 64),
-        expected_dump_json=dict(rdf_source=Path(__file__).name, sha256="s" * 64),
-        expected_dump_python=dict(rdf_source=RelativeFilePath(Path(__file__).name), sha256="s" * 64),
-        context=ValidationContext(root=Path(__file__).parent),
-    )
-
-
-def test_model_rdf_url_ref():
-    check_node(
-        ModelRdf,
-        dict(uri="https://example.com", sha256="s" * 64),
-        expected_dump_json=dict(rdf_source="https://example.com/", sha256="s" * 64),
-        expected_dump_python=dict(rdf_source=HttpUrl("https://example.com/"), sha256="s" * 64),
-    )
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        dict(id="lala", uri="https://example.com", sha256="s" * 64),
-        dict(url="https://example.com", sha256="s" * 64),
-    ],
-)
-def test_model_rdf_invalid(kwargs: Dict[str, Any]):
-    check_node(ModelRdf, kwargs, is_invalid=True)
 
 
 def test_linked_model_lala():
@@ -397,19 +365,6 @@ def test_output_ref_shape_too_small(model_data: Dict[str, Any]):
     ]
     summary = validate_format(model_data, context=ValidationContext(root=HttpUrl("http://example.com")))
     assert summary.status == "failed", summary.format()
-
-
-def test_model_has_parent_with_uri(model_data: Dict[str, Any]):
-    uri = "https://doi.org/10.5281/zenodo.5744489"
-    model_data["parent"] = dict(uri=uri, sha256="s" * 64)
-
-    model = load_description(model_data, context=ValidationContext(root=HttpUrl("https://example.com/")))
-    summary = model.validation_summaries[0]
-    assert summary.status == "passed", summary.format()
-
-    assert isinstance(model, Model)
-    assert isinstance(model.parent, ModelRdf)
-    assert str(model.parent.rdf_source) == uri
 
 
 def test_model_has_parent_with_id(model_data: Dict[str, Any]):
